@@ -10,7 +10,7 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.CharityApp">
+        android:theme="@style/Theme.Crowdfunding"> <!-- Đã đổi từ Theme.CharityApp thành Theme.Crowdfunding -->
 
         <!-- Màn hình Đăng nhập (Màn hình khởi chạy chính) -->
         <activity

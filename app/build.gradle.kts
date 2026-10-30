@@ -1,20 +1,15 @@
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.google.gms.google.services)
-}
-
-kotlin {
-    compilerOptions {
-        freeCompilerArgs.add("-Xskip-metadata-version-check")
-    }
 }
 
 android {
-    namespace = "com.example.charityapp"
-    compileSdk = 37
+    namespace = "com.example.crowdfunding"
+    compileSdk {
+        version = release(37)
+    }
 
     defaultConfig {
-        applicationId = "com.example.charityapp"
+        applicationId = "com.example.crowdfunding"
         minSdk = 24
         targetSdk = 37
         versionCode = 1
@@ -25,11 +20,10 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
-            proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
-            )
+            optimization {
+                enable = true
+                packageScope = setOf("androidx.**", "kotlin.**", "kotlinx.**")
+            }
         }
     }
     compileOptions {
@@ -39,22 +33,16 @@ android {
 }
 
 dependencies {
-    // Firebase BoM quản lý phiên bản ổn định, hạ riêng firebase-auth xuống bản tương thích tốt
-    implementation(platform(libs.firebase.bom))
-    implementation("com.google.firebase:firebase-auth:23.2.0")
-    implementation(libs.firebase.firestore)
-    implementation(libs.firebase.storage)
-    implementation(libs.firebase.messaging)
-
-    // AndroidX dependencies
-    implementation(libs.androidx.activity.ktx)
-    implementation(libs.androidx.appcompat)
-    implementation(libs.androidx.constraintlayout)
-    implementation(libs.androidx.core.ktx)
+    implementation(libs.activity.ktx)
+    implementation(libs.appcompat)
+    implementation(libs.constraintlayout)
     implementation(libs.material)
-
-    // Testing
     testImplementation(libs.junit)
-    androidTestImplementation(libs.androidx.espresso.core)
-    androidTestImplementation(libs.androidx.junit)
+    androidTestImplementation(libs.espresso.core)
+    androidTestImplementation(libs.ext.junit)
+    implementation(platform("com.google.firebase:firebase-bom:32.8.0"))
+    implementation("com.google.firebase:firebase-auth-ktx")
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.auth)
+    implementation(libs.firebase.messaging)
 }
