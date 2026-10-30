@@ -1,4 +1,3 @@
-
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.google.services)
@@ -22,11 +21,8 @@ android {
     buildTypes {
         release {
             isMinifyEnabled = false
-
             proguardFiles(
-                getDefaultProguardFile(
-                    "proguard-android-optimize.txt"
-                ),
+                getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
         }
@@ -42,35 +38,26 @@ android {
     }
 }
 
-
 dependencies {
-
-    // AndroidX
+    // AndroidX & Material Design
     implementation(libs.activity.ktx)
     implementation(libs.appcompat)
     implementation(libs.constraintlayout)
-
-    // Material Design
     implementation(libs.material)
 
-    // Firebase BoM
+    // Firebase BoM & các gói Firebase
     implementation(platform(libs.firebase.bom))
-
-    // Firebase Authentication
     implementation(libs.firebase.auth)
-
-    // Firebase Cloud Messaging
     implementation(libs.firebase.messaging)
+    implementation("com.google.firebase:firebase-firestore")
+    implementation("com.google.firebase:firebase-storage")
 
-    // Firebase Cloud Firestore
-    implementation(
-        "com.google.firebase:firebase-firestore"
-    )
+    // Glide
+    implementation("com.github.bumptech.glide:glide:4.16.0")
+    annotationProcessor("com.github.bumptech.glide:compiler:4.16.0")
 
-    // Unit Testing
+    // Testing
     testImplementation(libs.junit)
-
-    // Android Instrumentation Testing
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)
 }
