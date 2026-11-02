@@ -62,10 +62,15 @@ class MainActivity : AppCompatActivity() {
             )
         )
 
-        // Chỉ định rõ kiểu dữ liệu 'campaign: Campaign' để Kotlin không bị lỗi Cannot infer type
+
         campaignAdapter = CampaignAdapter(sampleCampaigns) { campaign: Campaign ->
-            val intent = Intent(this, CampaignDetailActivity::class.java)
-            intent.putExtra("CAMPAIGN_ID", campaign.id)
+            val intent = Intent(this, CampaignDetailActivity::class.java).apply {
+                putExtra("CAMPAIGN_ID", campaign.id)
+                putExtra("CAMPAIGN_TITLE", campaign.title)
+                putExtra("CAMPAIGN_DESC", campaign.description)
+                putExtra("CAMPAIGN_TARGET", campaign.targetAmount)
+                putExtra("CAMPAIGN_CURRENT", campaign.currentAmount)
+            }
             startActivity(intent)
         }
 
