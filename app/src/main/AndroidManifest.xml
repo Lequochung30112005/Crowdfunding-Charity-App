@@ -34,22 +34,28 @@
             android:exported="false"
             android:windowSoftInputMode="adjustResize" />
 
-        <!-- 3. Màn hình Trang chủ (Danh sách chiến dịch) -->
+        <!-- 3. Màn hình Trang chủ (Danh sách chiến dịch dành cho User) -->
         <activity
             android:name=".MainActivity"
             android:exported="false" />
 
-        <!-- 4. Màn hình Thông tin cá nhân người dùng -->
+        <!-- 4. Màn hình Trang Quản Trị (Dành riêng cho Admin) -->
+        <activity
+            android:name=".admin.AdminDashboardActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize" />
+
+        <!-- 5. Màn hình Thông tin cá nhân người dùng -->
         <activity
             android:name=".UserProfileActivity"
             android:exported="false" />
 
-        <!-- 5. Màn hình Chi tiết chiến dịch từ thiện -->
+        <!-- 6. Màn hình Chi tiết chiến dịch từ thiện -->
         <activity
             android:name=".ui.detail.CampaignDetailActivity"
             android:exported="false" />
 
-        <!-- 6. Màn hình Nhập số tiền & Thanh toán ZaloPay -->
+        <!-- 7. Màn hình Nhập số tiền & Thanh toán ZaloPay -->
         <activity
             android:name=".ui.detail.DonateActivity"
             android:exported="true"
@@ -63,7 +69,7 @@
             </intent-filter>
         </activity>
 
-        <!-- 7. Màn hình Thông báo thanh toán thành công -->
+        <!-- 8. Màn hình Thông báo thanh toán thành công -->
         <activity
             android:name=".ui.detail.DonationSuccessActivity"
             android:exported="false" />

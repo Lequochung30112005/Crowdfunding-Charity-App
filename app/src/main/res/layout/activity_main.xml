@@ -10,15 +10,21 @@
     android:background="@color/background_light"
     tools:context=".MainActivity">
 
-    <!-- Tiêu đề & Các nút chức năng ở trên cùng -->
-    <TextView
-        android:layout_width="wrap_content"
+    <!-- 1. Header dùng chung hiển thị Hello + Tên user và Avatar (Khớp với MainActivity.kt) -->
+    <include
+        android:id="@+id/userHeader"
+        layout="@layout/layout_user_header" />
+
+    <!-- 2. Nút mở Trang Quản Trị Admin (Mặc định ẩn, chỉ hiện khi user có role admin) -->
+    <Button
+        android:id="@+id/btnAdminDashboard"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Chào mừng bạn đến với CharityApp!"
-        android:textSize="20sp"
-        android:textColor="@color/text_primary"
-        android:textStyle="bold"
-        android:layout_marginBottom="16dp"/>
+        android:layout_marginBottom="12dp"
+        android:backgroundTint="#7B1FA2"
+        android:text="⚡ Vào Trang Quản Trị Admin"
+        android:textColor="#FFFFFF"
+        android:visibility="gone" />
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -53,7 +59,7 @@
         android:textStyle="bold"
         android:layout_marginBottom="8dp"/>
 
-    <!-- Danh sách RecyclerView hiển thị các chiến dịch (Tuần 2) -->
+    <!-- Danh sách RecyclerView hiển thị các chiến dịch -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rvCampaigns"
         android:layout_width="match_parent"

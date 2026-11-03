@@ -4,89 +4,100 @@ import android.content.Intent
 import android.os.Bundle
 import android.widget.ImageView
 import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.RecyclerView
+import com.bumptech.glide.Glide
 import com.example.charityapp.R
-import com.example.charityapp.models.DisbursementReport
-import com.example.charityapp.ui.adapter.DisbursementAdapter
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.progressindicator.LinearProgressIndicator
+import com.google.firebase.firestore.FirebaseFirestore
 
 class CampaignDetailActivity : AppCompatActivity() {
 
     private var campaignId: String? = null
     private var campaignTitle: String? = null
+    private val db = FirebaseFirestore.getInstance()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_campaign_detail)
 
-        // 1. Nhận dữ liệu truyền qua từ MainActivity
+        // 1. Nhận campaignId truyền qua từ Intent
         campaignId = intent.getStringExtra("CAMPAIGN_ID")
-        campaignTitle = intent.getStringExtra("CAMPAIGN_TITLE")
-        val campaignDesc = intent.getStringExtra("CAMPAIGN_DESC") ?: "Chi tiết về hoàn cảnh khó khăn và kế hoạch thực hiện chiến dịch từ thiện..."
-        val targetAmount = intent.getDoubleExtra("CAMPAIGN_TARGET", 100000000.0)
-        val currentAmount = intent.getDoubleExtra("CAMPAIGN_CURRENT", 6500000.0)
 
-        // 2. Ánh xạ các thành phần trong XML (Bao gồm cả ImageView mới có)
-        val imgCampaign = findViewById<ImageView>(R.id.imgDetailCampaign)
-        val tvTitle = findViewById<TextView>(R.id.tvDetailTitle)
-        val tvDescription = findViewById<TextView>(R.id.tvDetailDescription)
-        val tvRaised = findViewById<TextView>(R.id.tvDetailRaised)
-        val tvTarget = findViewById<TextView>(R.id.tvDetailTarget)
-        val progressIndicator = findViewById<LinearProgressIndicator>(R.id.progressDetail)
-        val btnDonateNow = findViewById<MaterialButton>(R.id.btnDonateNow)
-
-        // 3. Hiển thị dữ liệu lên giao diện
-        if (!campaignTitle.isNullOrEmpty()) {
-            tvTitle.text = campaignTitle
+        if (campaignId.isNullOrEmpty()) {
+            Toast.makeText(this, "Không tìm thấy thông tin chiến dịch", Toast.LENGTH_SHORT).show()
+            finish()
+            return
         }
-        tvDescription.text = campaignDesc
-        tvRaised.text = "Đã đạt: ${String.format("%,.0f", currentAmount)} đ"
-        tvTarget.text = "Mục tiêu: ${String.format("%,.0f", targetAmount)} đ"
 
-        // Gán ảnh mẫu tạm thời (hoặc bạn có thể dùng thư viện Glide/Picasso nếu load từ URL)
-        imgCampaign.setImageResource(android.R.drawable.ic_menu_gallery)
-
-        // Tính % hoàn thành cho Progress bar
-        val progressPercent = if (targetAmount > 0) ((currentAmount / targetAmount) * 100).toInt() else 0
-        progressIndicator.progress = progressPercent
-
-        // 4. Cấu hình danh sách nhật ký giải ngân
-        setupDisbursementRecyclerView()
-
-        // 5. Bấm nút "ỦNG HỘ NGAY" để mở DonateActivity và mang theo campaignId, campaignTitle
-        btnDonateNow.setOnClickListener {
-            val intent = Intent(this, DonateActivity::class.java).apply {
-                putExtra("CAMPAIGN_ID", campaignId)
-                putExtra("CAMPAIGN_TITLE", campaignTitle)
-            }
-            startActivity(intent)
-        }
+        // 2. Load dữ liệu chi tiết trực tiếp từ Firestore
+        loadCampaignDetailFromFirestore()
     }
 
-    private fun setupDisbursementRecyclerView() {
-        val sampleReports = listOf(
-            DisbursementReport(
-                id = "1",
-                title = "Đợt 1: Mua vật liệu xây dựng",
-                date = "20/10/2026",
-                content = "Đã mua 500 bao xi măng và 2 tấn thép để khởi công xây dựng nhà cộng đồng.",
-                imageUrl = "https://picsum.photos/400/200"
-            ),
-            DisbursementReport(
-                id = "2",
-                title = "Đợt 2: Trao quà cho bà con",
-                date = "25/10/2026",
-                content = "Trao tặng 100 phần quà nhu yếu phẩm cho các hộ gia đình khó khăn.",
-                imageUrl = "https://picsum.photos/400/201"
-            )
-        )
+    private fun loadCampaignDetailFromFirestore() {
+        db.collection("campaigns").document(campaignId!!).get()
+            .addOnSuccessListener { doc ->
+                if (doc.exists()) {
+                    val title = doc.getString("title") ?: "Chiến dịch từ thiện"
+                    val desc = doc.getString("description") ?: "Chưa có mô tả chi tiết."
+                    val targetAmount = doc.getDouble("targetAmount") ?: 100000000.0
+                    val currentAmount = doc.getDouble("currentAmount") ?: 0.0
+                    val imageUrl = doc.getString("imageUrl")
 
-        val adapter = DisbursementAdapter(sampleReports)
-        val rvDisbursementLogs = findViewById<RecyclerView>(R.id.rvDisbursementLogs)
-        rvDisbursementLogs.layoutManager = LinearLayoutManager(this)
-        rvDisbursementLogs.adapter = adapter
+                    campaignTitle = title
+
+                    // Ánh xạ View
+                    val imgCampaign = findViewById<ImageView>(R.id.imgDetailCampaign)
+                    val tvTitle = findViewById<TextView>(R.id.tvDetailTitle)
+                    val tvDescription = findViewById<TextView>(R.id.tvDetailDescription)
+                    val tvRaised = findViewById<TextView>(R.id.tvDetailRaised)
+                    val tvTarget = findViewById<TextView>(R.id.tvDetailTarget)
+                    val progressIndicator = findViewById<LinearProgressIndicator>(R.id.progressDetail)
+                    val btnDonateNow = findViewById<MaterialButton>(R.id.btnDonateNow)
+
+                    // Hiển thị lên giao diện
+                    tvTitle.text = title
+                    tvDescription.text = desc
+                    tvRaised.text = "Đã đạt: ${String.format("%,.0f", currentAmount)} đ"
+                    tvTarget.text = "Mục tiêu: ${String.format("%,.0f", targetAmount)} đ"
+
+                    // Xử lý hiển thị ảnh (Hỗ trợ URL web hoặc chuỗi Base64)
+                    if (!imageUrl.isNullOrEmpty()) {
+                        if (imageUrl.startsWith("http")) {
+                            Glide.with(this).load(imageUrl).into(imgCampaign)
+                        } else {
+                            try {
+                                val decodedBytes = android.util.Base64.decode(imageUrl, android.util.Base64.DEFAULT)
+                                val decodedBitmap = android.graphics.BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.size)
+                                imgCampaign.setImageBitmap(decodedBitmap)
+                            } catch (e: Exception) {
+                                imgCampaign.setImageResource(android.R.drawable.ic_menu_gallery)
+                            }
+                        }
+                    } else {
+                        imgCampaign.setImageResource(android.R.drawable.ic_menu_gallery)
+                    }
+
+                    // Tính % hoàn thành
+                    val progressPercent = if (targetAmount > 0) ((currentAmount / targetAmount) * 100).toInt() else 0
+                    progressIndicator.progress = progressPercent
+
+                    // Nút Ủng hộ ngay
+                    // Nút Ủng hộ ngay
+                    btnDonateNow.setOnClickListener {
+                        val intent = Intent(this, DonateActivity::class.java).apply {
+                            putExtra("CAMPAIGN_ID", campaignId)
+                            putExtra("CAMPAIGN_TITLE", title) // ⚡ Dùng thẳng biến 'title' vừa lấy từ Firestore ở trên
+                        }
+                        startActivity(intent)
+                    }
+                } else {
+                    Toast.makeText(this, "Chiến dịch không tồn tại trên hệ thống", Toast.LENGTH_SHORT).show()
+                }
+            }
+            .addOnFailureListener { e ->
+                Toast.makeText(this, "Lỗi tải dữ liệu: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
     }
 }

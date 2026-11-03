@@ -7,6 +7,9 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.example.charityapp.Api.CreateOrder
 import com.example.charityapp.databinding.ActivityDonateBinding
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FieldValue
+import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -21,21 +24,24 @@ class DonateActivity : AppCompatActivity() {
     private var campaignId: String? = null
     private var campaignTitle: String? = null
     private var selectedAmount: Long = 0
-
-    // Khai báo finalAmount ở cấp độ class để dùng chung cho cả hàm thanh toán và trả về kết quả
     private var finalAmount: Long = 0
+
+    private val db = FirebaseFirestore.getInstance()
+    private val auth = FirebaseAuth.getInstance()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityDonateBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        // 1. Nhận dữ liệu truyền từ CampaignDetailActivity hoặc MainActivity
+        // 1. Nhận dữ liệu truyền từ CampaignDetailActivity
         campaignId = intent.getStringExtra("CAMPAIGN_ID")
         campaignTitle = intent.getStringExtra("CAMPAIGN_TITLE")
 
         if (!campaignTitle.isNullOrEmpty()) {
             binding.tvCampaignTitle.text = campaignTitle
+        } else {
+            binding.tvCampaignTitle.text = "Chiến dịch từ thiện"
         }
 
         // 2. Xử lý sự kiện chọn nhanh số tiền qua các Chip
@@ -48,7 +54,6 @@ class DonateActivity : AppCompatActivity() {
         binding.btnProceedPayment.setOnClickListener {
             val inputStr = binding.etAmount.text.toString().trim()
 
-            // Gán giá trị vào biến toàn cục finalAmount
             finalAmount = inputStr.toLongOrNull() ?: selectedAmount
             val message = binding.etMessage.text.toString().trim()
 
@@ -73,12 +78,10 @@ class DonateActivity : AppCompatActivity() {
         // Sử dụng Coroutine chạy ngầm để gọi API tạo đơn hàng, tránh nghẽn luồng chính
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                // Gọi API CreateOrder lấy zp_trans_token thật từ ZaloPay Sandbox
                 val orderApi = CreateOrder()
                 val data = orderApi.createOrder(amount.toString())
 
                 if (data != null && data.optInt("returncode") == 1) {
-                    // Đổi từ optString("zp_trans_token") thành optString("zptranstoken")
                     val zpTransToken = data.optString("zptranstoken")
 
                     withContext(Dispatchers.Main) {
@@ -90,10 +93,30 @@ class DonateActivity : AppCompatActivity() {
                                 override fun onPaymentSucceeded(transactionId: String, transToken: String, appTransID: String) {
                                     Toast.makeText(this@DonateActivity, "Thanh toán thành công!", Toast.LENGTH_LONG).show()
 
+                                    // ⚡ 1. CẬP NHẬT TIẾN ĐỘ VÀO FIRESTORE NGAY KHI THANH TOÁN THÀNH CÔNG
+                                    if (!campaignId.isNullOrEmpty()) {
+                                        val campaignRef = db.collection("campaigns").document(campaignId!!)
+
+                                        // Cộng dồn tiền vào tổng quỹ hiện tại của chiến dịch
+                                        campaignRef.update("currentAmount", FieldValue.increment(finalAmount.toDouble()))
+
+                                        // ⚡ 2. LƯU LỊCH SỬ VÀO COLLECTION "donations" ĐỂ ADMIN THỐNG KÊ
+                                        val donationData = hashMapOf(
+                                            "campaignId" to campaignId,
+                                            "campaignTitle" to (campaignTitle ?: "Chiến dịch từ thiện"),
+                                            "userName" to (auth.currentUser?.displayName ?: "Nhà hảo tâm"),
+                                            "amount" to finalAmount.toDouble(),
+                                            "timestamp" to com.google.firebase.Timestamp.now()
+                                        )
+                                        db.collection("donations").add(donationData)
+                                    }
+
+                                    // ⚡ 3. CHUYỂN SANG MÀN HÌNH THÀNH CÔNG VÀ TRUYỀN ĐẦY ĐỦ TIÊU ĐỀ
                                     val successIntent = Intent(this@DonateActivity, DonationSuccessActivity::class.java).apply {
                                         putExtra("TRANSACTION_ID", transactionId)
                                         putExtra("AMOUNT", finalAmount)
                                         putExtra("CAMPAIGN_ID", campaignId)
+                                        putExtra("CAMPAIGN_TITLE", campaignTitle ?: "Chiến dịch từ thiện")
                                     }
                                     startActivity(successIntent)
                                     finish()
@@ -109,7 +132,7 @@ class DonateActivity : AppCompatActivity() {
                             }
                         )
                     }
-                }else {
+                } else {
                     val returnMessage = data?.optString("return_message") ?: "Không thể tạo đơn hàng"
                     withContext(Dispatchers.Main) {
                         Toast.makeText(this@DonateActivity, "Lỗi ZaloPay: $returnMessage", Toast.LENGTH_LONG).show()
