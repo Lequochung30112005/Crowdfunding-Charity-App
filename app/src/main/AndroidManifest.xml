@@ -74,6 +74,11 @@
             android:name=".ui.detail.DonationSuccessActivity"
             android:exported="false" />
 
+        <!-- 9. ⚡ Màn hình Hộp Thư Thông Báo từ Admin (Đã thêm mới tại đây) -->
+        <activity
+            android:name=".ui.detail.NotificationActivity"
+            android:exported="false" />
+
     </application>
 
 </manifest>

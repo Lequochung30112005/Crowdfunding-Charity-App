@@ -37,7 +37,7 @@ class AdminDashboardActivity : AppCompatActivity() {
 
     private var selectedImageUri: Uri? = null
 
-    // Trình chọn ảnh chiến dịch (Dùng Glide để preview ngay lập tức)
+    // Trình chọn ảnh chiến dịch
     private val pickCampaignImageLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         if (uri != null) {
             selectedImageUri = uri
@@ -84,6 +84,13 @@ class AdminDashboardActivity : AppCompatActivity() {
             startActivity(intent)
             finish()
         }
+        // Nút chuyển nhanh sang trang User để test thông báo và quyên góp
+        binding.btnQuickTestUser.setOnClickListener {
+            // Thay MainActivity::class.java bằng tên Activity trang chủ/danh sách chiến dịch của User bên bạn
+            val intent = Intent(this, com.example.charityapp.MainActivity::class.java)
+            startActivity(intent)
+            Toast.makeText(this, "Đang mở giao diện User để test...", Toast.LENGTH_SHORT).show()
+        }
     }
 
     private fun loadAdminHeaderInfo() {
@@ -107,19 +114,16 @@ class AdminDashboardActivity : AppCompatActivity() {
     }
 
     private fun setupMenuToggles() {
-        // Menu 1: Tạo chiến dịch
         binding.cardCreateCampaignMenu.setOnClickListener {
             val isVisible = binding.layoutCreateCampaignDetail.isVisible
             binding.layoutCreateCampaignDetail.isVisible = !isVisible
         }
 
-        // Menu 2: Gửi thông báo
         binding.cardBroadcastMenu.setOnClickListener {
             val isVisible = binding.layoutBroadcastDetail.isVisible
             binding.layoutBroadcastDetail.isVisible = !isVisible
         }
 
-        // Menu 3: Quản lý / Ẩn hiện chiến dịch
         binding.cardManageCampaignsMenu?.setOnClickListener {
             val isVisible = binding.layoutManageCampaignsDetail?.isVisible ?: false
             binding.layoutManageCampaignsDetail?.isVisible = !isVisible
@@ -128,7 +132,6 @@ class AdminDashboardActivity : AppCompatActivity() {
             }
         }
 
-        // Menu 4: Danh sách người đóng góp
         binding.cardDonatorsMenu.setOnClickListener {
             val isVisible = binding.layoutDonatorsDetail.isVisible
             binding.layoutDonatorsDetail.isVisible = !isVisible
@@ -188,7 +191,6 @@ class AdminDashboardActivity : AppCompatActivity() {
             }
     }
 
-    // Load danh sách chiến dịch để Admin bấm vào ẩn/hiện trực tiếp
     private fun loadAdminManageCampaignsList() {
         db.collection("campaigns").addSnapshotListener { value, error ->
             if (error != null) return@addSnapshotListener
@@ -221,7 +223,6 @@ class AdminDashboardActivity : AppCompatActivity() {
         val campaignId = db.collection("campaigns").document().id
         val targetAmount = targetStr.toDoubleOrNull() ?: 0.0
 
-        // Chuyển Uri thành chuỗi mã hóa Base64 an toàn
         val imageString = if (selectedImageUri != null) {
             convertUriToBase64(selectedImageUri!!) ?: "https://picsum.photos/500/300"
         } else {
@@ -231,7 +232,7 @@ class AdminDashboardActivity : AppCompatActivity() {
         saveCampaignToFirestore(campaignId, title, desc, targetAmount, imageString)
     }
 
-    // ⚡ Hàm nén ảnh Base64 chuẩn xác đã sửa sạch lỗi cú pháp
+    // ⚡ Hàm nén ảnh Base64 đã sửa sạch lỗi cú pháp toán học
     private fun convertUriToBase64(uri: Uri): String? {
         return try {
             val inputStream: InputStream? = contentResolver.openInputStream(uri)
@@ -260,12 +261,16 @@ class AdminDashboardActivity : AppCompatActivity() {
             "targetAmount" to target,
             "currentAmount" to 0.0,
             "imageUrl" to imageUrlOrBase64,
-            "active" to true // Mặc định chiến dịch mới tạo sẽ ở trạng thái Hoạt động
+            "active" to true
         )
 
         db.collection("campaigns").document(id).set(newCampaign)
             .addOnSuccessListener {
                 Toast.makeText(this, "Phát hành chiến dịch thành công!", Toast.LENGTH_SHORT).show()
+
+                // ⚡ Tự động đẩy thông báo cho tất cả User khi phát hành thành công
+                sendAutoNotificationForNewCampaign(title)
+
                 binding.etCampaignTitle.text?.clear()
                 binding.etTargetAmount.text?.clear()
                 binding.etDescription.text?.clear()
@@ -278,7 +283,15 @@ class AdminDashboardActivity : AppCompatActivity() {
             }
     }
 
-    // ⚡ Chức năng Ẩn / Mở lại chiến dịch
+    private fun sendAutoNotificationForNewCampaign(campaignTitle: String) {
+        val notificationData = hashMapOf(
+            "title" to "Chiến dịch mới phát hành!",
+            "message" to "Chiến dịch '$campaignTitle' vừa được ra mắt. Hãy tham gia ủng hộ nhé!",
+            "timestamp" to com.google.firebase.Timestamp.now()
+        )
+        db.collection("notifications").add(notificationData)
+    }
+
     fun toggleCampaignStatus(campaignId: String, currentStatus: Boolean) {
         val newStatus = !currentStatus
         val statusText = if (newStatus) "mở lại" else "ẩn/đóng"
@@ -310,7 +323,7 @@ class AdminDashboardActivity : AppCompatActivity() {
         }
 
         val notificationData = hashMapOf(
-            "title"	to title,
+            "title" to title,
             "message" to msg,
             "timestamp" to com.google.firebase.Timestamp.now()
         )
