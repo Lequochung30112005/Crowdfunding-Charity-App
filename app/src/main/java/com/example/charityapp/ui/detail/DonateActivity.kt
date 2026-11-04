@@ -124,10 +124,12 @@ class DonateActivity : AppCompatActivity() {
 
                                 override fun onPaymentCanceled(transToken: String, appTransID: String) {
                                     Toast.makeText(this@DonateActivity, "Đã hủy thanh toán", Toast.LENGTH_SHORT).show()
+                                    finish() // Đóng Activity khi hủy hoặc bấm Đóng trên ZaloPay
                                 }
 
                                 override fun onPaymentError(zaloPayError: ZaloPayError, transToken: String, appTransID: String) {
                                     Toast.makeText(this@DonateActivity, "Lỗi thanh toán: $zaloPayError", Toast.LENGTH_LONG).show()
+                                    finish() // Đóng Activity khi xảy ra lỗi thanh toán
                                 }
                             }
                         )
@@ -148,8 +150,10 @@ class DonateActivity : AppCompatActivity() {
         }
     }
 
+    // ⚡ QUAN TRỌNG: Cập nhật hàm này để nhận kết quả trả về từ scheme deep-link khi bấm "Đóng" hoặc "Chi tiết giao dịch"
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        setIntent(intent)
         ZaloPaySDK.getInstance().onResult(intent)
     }
 }
