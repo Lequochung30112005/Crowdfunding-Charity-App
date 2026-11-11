@@ -8,8 +8,6 @@ import androidx.appcompat.app.AppCompatActivity
 import com.example.charityapp.R
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
-import com.example.charityapp.MainActivity
-import android.content.Intent
 
 class RegisterActivity : AppCompatActivity() {
     private lateinit var auth: FirebaseAuth
@@ -54,12 +52,7 @@ class RegisterActivity : AppCompatActivity() {
                             .set(userMap)
                             .addOnSuccessListener {
                                 Toast.makeText(this, "Đăng ký thành công!", Toast.LENGTH_SHORT).show()
-
-                                // Chuyển thẳng sang MainActivity và xóa màn hình Login/Register khỏi lịch sử
-                                val intent = Intent(this, MainActivity::class.java)
-                                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                                startActivity(intent)
-                                finish()
+                                finish() // Đóng màn hình đăng ký, quay lại đăng nhập
                             }
                             .addOnFailureListener { e ->
                                 Toast.makeText(this, "Lỗi lưu Firestore: ${e.message}", Toast.LENGTH_SHORT).show()

@@ -6,5 +6,6 @@ data class Campaign(
     val description: String = "",
     val targetAmount: Double = 0.0,
     val currentAmount: Double = 0.0,
-    val imageUrl: String = ""
+    val imageUrl: String = "",
+    val active: Boolean = true
 )
