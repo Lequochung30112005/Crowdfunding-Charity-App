@@ -104,10 +104,28 @@ class AdminDashboardActivity : AppCompatActivity() {
                 binding.adminHeader.tvUserRoleBadge.text = "Hệ thống Quản trị (Admin)"
 
                 if (!photoUrl.isNullOrEmpty()) {
-                    Glide.with(this)
-                        .load(photoUrl)
-                        .circleCrop()
-                        .into(binding.adminHeader.ivUserAvatar)
+                    if (photoUrl.startsWith("http://") || photoUrl.startsWith("https://")) {
+                        Glide.with(this)
+                            .load(photoUrl)
+                            .circleCrop()
+                            .into(binding.adminHeader.ivUserAvatar)
+                    } else {
+                        try {
+                            val cleanStr = if (photoUrl.contains(",")) photoUrl.substringAfter(",") else photoUrl
+                            val decodedBytes = Base64.decode(cleanStr.replace("\\s".toRegex(), ""), Base64.DEFAULT)
+                            val decodedBitmap = BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.size)
+                            if (decodedBitmap != null) {
+                                Glide.with(this)
+                                    .load(decodedBitmap)
+                                    .circleCrop()
+                                    .into(binding.adminHeader.ivUserAvatar)
+                            } else {
+                                binding.adminHeader.ivUserAvatar.setImageResource(android.R.drawable.ic_menu_camera)
+                            }
+                        } catch (e: Exception) {
+                            binding.adminHeader.ivUserAvatar.setImageResource(android.R.drawable.ic_menu_camera)
+                        }
+                    }
                 }
             }
         }

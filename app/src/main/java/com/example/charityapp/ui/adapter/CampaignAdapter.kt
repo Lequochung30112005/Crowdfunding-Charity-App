@@ -1,17 +1,18 @@
 package com.example.charityapp.ui.adapter
 
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.net.Uri
 import android.util.Base64
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
-import com.example.charityapp.R
 import com.example.charityapp.databinding.ItemCampaignBinding
 import com.example.charityapp.models.Campaign
 
 class CampaignAdapter(
-    private val campaignList: List<Campaign>,
+    private var campaignList: List<Campaign>,
     private val onItemClick: (Campaign) -> Unit
 ) : RecyclerView.Adapter<CampaignAdapter.CampaignViewHolder>() {
 
@@ -28,22 +29,57 @@ class CampaignAdapter(
 
             binding.tvProgressText.text = "Đã quyên góp: ${String.format("%,.0f", campaign.currentAmount)}đ / ${String.format("%,.0f", campaign.targetAmount)}đ"
 
-            // ⚡ XỬ LÝ HIỂN THỊ ẢNH (HỖ TRỢ CẢ URL WEB VÀ CHUỖI BASE64)
             val imageUrl = campaign.imageUrl
+
+            // Xóa sạch ảnh cũ trước khi gán mới để tránh nháy ảnh khi cuộn danh sách
+            binding.ivCampaignImage.setImageDrawable(null)
+
             if (!imageUrl.isNullOrEmpty()) {
-                if (imageUrl.startsWith("http")) {
-                    // Nếu là đường dẫn mạng (http/https)
+                // 🛑 KIỂM TRA AN TOÀN TUYỆT ĐỐI:
+                // Nếu là URL mạng chuẩn bắt đầu bằng http/https thì mới dùng Glide.
+                if (imageUrl.startsWith("http://") || imageUrl.startsWith("https://")) {
                     Glide.with(binding.ivCampaignImage.context)
                         .load(imageUrl)
                         .placeholder(android.R.drawable.ic_menu_gallery)
                         .error(android.R.drawable.ic_menu_gallery)
                         .into(binding.ivCampaignImage)
-                } else {
-                    // Nếu là chuỗi mã hóa Base64 do Admin tạo ra
+                }
+                else if (imageUrl.startsWith("content://") || imageUrl.startsWith("file://")) {
+                    // Xử lý Uri nội bộ bằng InputStream an toàn
                     try {
-                        val decodedBytes = Base64.decode(imageUrl, Base64.DEFAULT)
+                        val uri = Uri.parse(imageUrl)
+                        val inputStream = binding.ivCampaignImage.context.contentResolver.openInputStream(uri)
+                        val bitmap = BitmapFactory.decodeStream(inputStream)
+                        inputStream?.close()
+
+                        if (bitmap != null) {
+                            binding.ivCampaignImage.setImageBitmap(bitmap)
+                        } else {
+                            binding.ivCampaignImage.setImageResource(android.R.drawable.ic_menu_gallery)
+                        }
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                        binding.ivCampaignImage.setImageResource(android.R.drawable.ic_menu_gallery)
+                    }
+                }
+                else {
+                    // 🖼️ TOÀN BỘ CHUỖI BASE64 TRONG FIRESTORE (Như trong ảnh của bạn) SẼ CHẠY VÀO ĐÂY.
+                    // Tuyệt đối KHÔNG QUA GLIDE, nên sẽ không bao giờ có lỗi ENAMETOOLONG nữa!
+                    try {
+                        val cleanStr = if (imageUrl.contains(",")) {
+                            imageUrl.substringAfter(",")
+                        } else {
+                            imageUrl
+                        }
+                        val finalStr = cleanStr.replace("\\s".toRegex(), "")
+                        val decodedBytes = Base64.decode(finalStr, Base64.DEFAULT)
                         val decodedBitmap = BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.size)
-                        binding.ivCampaignImage.setImageBitmap(decodedBitmap)
+
+                        if (decodedBitmap != null) {
+                            binding.ivCampaignImage.setImageBitmap(decodedBitmap)
+                        } else {
+                            binding.ivCampaignImage.setImageResource(android.R.drawable.ic_menu_gallery)
+                        }
                     } catch (e: Exception) {
                         e.printStackTrace()
                         binding.ivCampaignImage.setImageResource(android.R.drawable.ic_menu_gallery)
@@ -74,4 +110,9 @@ class CampaignAdapter(
     }
 
     override fun getItemCount(): Int = campaignList.size
+
+    fun updateData(newList: List<Campaign>) {
+        campaignList = newList
+        notifyDataSetChanged()
+    }
 }

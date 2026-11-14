@@ -1,4 +1,4 @@
-package com.example.charityapp.data.model;
+package com.example.charityapp.models;
 
 public class User {
     private String uid;

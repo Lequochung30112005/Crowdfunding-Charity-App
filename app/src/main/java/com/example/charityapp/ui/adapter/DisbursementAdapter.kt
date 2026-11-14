@@ -28,10 +28,33 @@ class DisbursementAdapter(
             tvDisbursementDate.text = item.date
             tvDisbursementContent.text = item.content
 
-            Glide.with(root.context)
-                .load(item.imageUrl)
-                .centerCrop()
-                .into(imgDisbursement)
+            val imageUrl = item.imageUrl
+            if (!imageUrl.isNullOrEmpty()) {
+                if (imageUrl.startsWith("http://") || imageUrl.startsWith("https://")) {
+                    Glide.with(root.context)
+                        .load(imageUrl)
+                        .centerCrop()
+                        .into(imgDisbursement)
+                } else {
+                    try {
+                        val cleanStr = if (imageUrl.contains(",")) imageUrl.substringAfter(",") else imageUrl
+                        val decodedBytes = android.util.Base64.decode(cleanStr.replace("\\s".toRegex(), ""), android.util.Base64.DEFAULT)
+                        val decodedBitmap = android.graphics.BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.size)
+                        if (decodedBitmap != null) {
+                            Glide.with(root.context)
+                                .load(decodedBitmap)
+                                .centerCrop()
+                                .into(imgDisbursement)
+                        } else {
+                            imgDisbursement.setImageResource(android.R.drawable.ic_menu_gallery)
+                        }
+                    } catch (e: Exception) {
+                        imgDisbursement.setImageResource(android.R.drawable.ic_menu_gallery)
+                    }
+                }
+            } else {
+                imgDisbursement.setImageResource(android.R.drawable.ic_menu_gallery)
+            }
         }
     }
 

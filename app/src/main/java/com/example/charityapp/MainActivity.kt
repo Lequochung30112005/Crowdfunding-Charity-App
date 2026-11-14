@@ -16,6 +16,7 @@ import com.example.charityapp.ui.auth.LoginActivity
 import com.example.charityapp.ui.detail.CampaignDetailActivity
 import com.example.charityapp.ui.detail.NotificationActivity
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.FirebaseFirestore
 
 @SuppressLint("SetTextI18n")
@@ -26,6 +27,9 @@ class MainActivity : AppCompatActivity() {
     private lateinit var db: FirebaseFirestore
     private lateinit var campaignAdapter: CampaignAdapter
 
+    // Lưu lại Listener để có thể hủy khi Activity destroy, tránh rò rỉ bộ nhớ
+    private var campaignListener: ListenerRegistration? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
@@ -34,86 +38,79 @@ class MainActivity : AppCompatActivity() {
         auth = FirebaseAuth.getInstance()
         db = FirebaseFirestore.getInstance()
 
-        // 1. Tải thông tin "Hello + Tên user" và Avatar cho Header trang chủ
+        // 1. Khởi tạo RecyclerView 1 lần duy nhất chuẩn kiến trúc
+        initRecyclerView()
+
+        // 2. Thiết lập các sự kiện tương tác UI
+        setupClickListeners()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Tải lại thông tin user & phân quyền mỗi khi quay lại màn hình chính
         loadUserHeaderInfo()
-
-        // 2. Khởi tạo danh sách chiến dịch (RecyclerView)
-        setupRecyclerView()
-
-        // 3. Kiểm tra phân quyền Admin để ẩn/hiện nút Admin
         checkAdminRole()
+    }
 
-        // 4. Sự kiện bấm vào Avatar để mở trang cá nhân
+    override fun onDestroy() {
+        super.onDestroy()
+        // Hủy lắng nghe Firestore khi Activity bị hủy để giải phóng tài nguyên
+        campaignListener?.remove()
+    }
+
+    private fun setupClickListeners() {
+        // Sự kiện bấm vào Avatar mở trang cá nhân
         binding.userHeader.ivUserAvatar.setOnClickListener {
-            val intent = Intent(this, UserProfileActivity::class.java)
-            startActivity(intent)
+            startActivity(Intent(this, UserProfileActivity::class.java))
         }
 
-        // 5. Sự kiện Đăng xuất (Dùng chữ Đăng xuất tinh tế btnLogoutText)
-        binding.btnLogoutText.setOnClickListener {
+        // Sự kiện Đăng xuất
+        binding.btnlogout.setOnClickListener {
             auth.signOut()
             Toast.makeText(this, "Đã đăng xuất tài khoản", Toast.LENGTH_SHORT).show()
-            val intent = Intent(this, LoginActivity::class.java)
-            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            val intent = Intent(this, LoginActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            }
             startActivity(intent)
             finish()
         }
 
-        // 6. Sự kiện mở Trang Quản Trị (Chỉ hiển thị với Admin)
+        // Sự kiện mở Trang Quản Trị Admin
         binding.btnAdminDashboard.setOnClickListener {
-            val intent = Intent(this, AdminDashboardActivity::class.java)
-            startActivity(intent)
+            startActivity(Intent(this, AdminDashboardActivity::class.java))
         }
 
-        // 7. Sự kiện bấm mở Hộp Thư Thông Báo từ Admin
+        // Sự kiện mở Hộp Thư Thông Báo
         binding.btnInbox.setOnClickListener {
-            val intent = Intent(this, NotificationActivity::class.java)
-            startActivity(intent)
+            startActivity(Intent(this, NotificationActivity::class.java))
         }
     }
 
-    private fun loadUserHeaderInfo() {
-        val currentUser = auth.currentUser ?: return
-        db.collection("users").document(currentUser.uid).get()
-            .addOnSuccessListener { doc ->
-                if (doc.exists()) {
-                    val name = doc.getString("name") ?: "Thành viên"
-                    val photoUrl = doc.getString("photoUrl")
-
-                    // Đổ dữ liệu vào Header dùng chung
-                    binding.userHeader.tvHelloUser.text = "Hello, $name"
-                    binding.userHeader.tvUserRoleBadge.text = "Tài khoản Nhà hảo tâm"
-
-                    if (!photoUrl.isNullOrEmpty()) {
-                        Glide.with(this)
-                            .load(photoUrl)
-                            .circleCrop()
-                            .into(binding.userHeader.ivUserAvatar)
-                    }
-                }
+    private fun initRecyclerView() {
+        // Khởi tạo Adapter với danh sách rỗng ban đầu
+        campaignAdapter = CampaignAdapter(emptyList()) { campaign ->
+            val intent = Intent(this, CampaignDetailActivity::class.java).apply {
+                putExtra("CAMPAIGN_ID", campaign.id)
             }
+            startActivity(intent)
+        }
+
+        binding.rvCampaigns.apply {
+            layoutManager = LinearLayoutManager(this@MainActivity)
+            adapter = campaignAdapter
+            setHasFixedSize(true) // Tối ưu hiệu suất render danh sách
+        }
+
+        // Lắng nghe dữ liệu thời gian thực từ Firestore
+        listenToCampaigns()
     }
 
-    private fun checkAdminRole() {
-        val currentUser = auth.currentUser ?: return
-        db.collection("users").document(currentUser.uid)
-            .get()
-            .addOnSuccessListener { document ->
-                if (document.exists()) {
-                    val role = document.getString("role")?.lowercase()
-                    binding.btnAdminDashboard.isVisible = (role == "admin")
-                }
-            }
-            .addOnFailureListener {
-                binding.btnAdminDashboard.isVisible = false
-            }
-    }
-
-    private fun setupRecyclerView() {
-        // Chỉ hiển thị các chiến dịch đang mở (bỏ qua chiến dịch đã ẩn)
-        db.collection("campaigns")
+    private fun listenToCampaigns() {
+        campaignListener = db.collection("campaigns")
             .whereEqualTo("active", true)
             .addSnapshotListener { value, error ->
+                if (isFinishing || isDestroyed) return@addSnapshotListener
+
                 if (error != null) {
                     Toast.makeText(this, "Lỗi tải dữ liệu: ${error.message}", Toast.LENGTH_SHORT).show()
                     return@addSnapshotListener
@@ -129,15 +126,67 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
 
-                campaignAdapter = CampaignAdapter(campaigns) { campaign: Campaign ->
-                    val intent = Intent(this, CampaignDetailActivity::class.java).apply {
-                        putExtra("CAMPAIGN_ID", campaign.id)
-                    }
-                    startActivity(intent)
-                }
+                // Cập nhật dữ liệu vào Adapter sẵn có thay vì tạo mới
+                campaignAdapter.updateData(campaigns)
+            }
+    }
 
-                binding.rvCampaigns.layoutManager = LinearLayoutManager(this)
-                binding.rvCampaigns.adapter = campaignAdapter
+    private fun loadUserHeaderInfo() {
+        val currentUser = auth.currentUser ?: return
+        db.collection("users").document(currentUser.uid).get()
+            .addOnSuccessListener { doc ->
+                if (isFinishing || isDestroyed) return@addOnSuccessListener
+
+                if (doc.exists()) {
+                    val name = doc.getString("name") ?: "Thành viên"
+                    val photoUrl = doc.getString("photoUrl")
+
+                    binding.userHeader.tvHelloUser.text = "Hello, $name"
+                    binding.userHeader.tvUserRoleBadge.text = "Tài khoản Nhà hảo tâm"
+
+                    if (!photoUrl.isNullOrEmpty()) {
+                        if (photoUrl.startsWith("http://") || photoUrl.startsWith("https://")) {
+                            Glide.with(this)
+                                .load(photoUrl)
+                                .circleCrop()
+                                .into(binding.userHeader.ivUserAvatar)
+                        } else {
+                            try {
+                                val cleanStr = if (photoUrl.contains(",")) photoUrl.substringAfter(",") else photoUrl
+                                val decodedBytes = android.util.Base64.decode(cleanStr.replace("\\s".toRegex(), ""), android.util.Base64.DEFAULT)
+                                val decodedBitmap = android.graphics.BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.size)
+                                if (decodedBitmap != null) {
+                                    Glide.with(this)
+                                        .load(decodedBitmap)
+                                        .circleCrop()
+                                        .into(binding.userHeader.ivUserAvatar)
+                                } else {
+                                    binding.userHeader.ivUserAvatar.setImageResource(android.R.drawable.ic_menu_camera)
+                                }
+                            } catch (e: Exception) {
+                                binding.userHeader.ivUserAvatar.setImageResource(android.R.drawable.ic_menu_camera)
+                            }
+                        }
+                    }
+                }
+            }
+    }
+
+    private fun checkAdminRole() {
+        val currentUser = auth.currentUser ?: return
+        db.collection("users").document(currentUser.uid)
+            .get()
+            .addOnSuccessListener { document ->
+                if (isFinishing || isDestroyed) return@addOnSuccessListener
+
+                if (document.exists()) {
+                    val role = document.getString("role")?.lowercase()
+                    binding.btnAdminDashboard.isVisible = (role == "admin")
+                }
+            }
+            .addOnFailureListener {
+                if (isFinishing || isDestroyed) return@addOnFailureListener
+                binding.btnAdminDashboard.isVisible = false
             }
     }
 }

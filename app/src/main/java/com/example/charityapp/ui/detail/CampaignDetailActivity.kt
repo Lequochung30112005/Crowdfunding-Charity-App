@@ -85,13 +85,18 @@ class CampaignDetailActivity : AppCompatActivity() {
 
                     // Xử lý hiển thị ảnh (Hỗ trợ URL web hoặc chuỗi Base64)
                     if (!imageUrl.isNullOrEmpty()) {
-                        if (imageUrl.startsWith("http")) {
+                        if (imageUrl.startsWith("http://") || imageUrl.startsWith("https://")) {
                             Glide.with(this).load(imageUrl).into(imgCampaign)
                         } else {
                             try {
-                                val decodedBytes = android.util.Base64.decode(imageUrl, android.util.Base64.DEFAULT)
+                                val cleanStr = if (imageUrl.contains(",")) imageUrl.substringAfter(",") else imageUrl
+                                val decodedBytes = android.util.Base64.decode(cleanStr.replace("\\s".toRegex(), ""), android.util.Base64.DEFAULT)
                                 val decodedBitmap = android.graphics.BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.size)
-                                imgCampaign.setImageBitmap(decodedBitmap)
+                                if (decodedBitmap != null) {
+                                    imgCampaign.setImageBitmap(decodedBitmap)
+                                } else {
+                                    imgCampaign.setImageResource(android.R.drawable.ic_menu_gallery)
+                                }
                             } catch (e: Exception) {
                                 imgCampaign.setImageResource(android.R.drawable.ic_menu_gallery)
                             }

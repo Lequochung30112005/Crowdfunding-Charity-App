@@ -80,16 +80,24 @@ class UserProfileActivity : AppCompatActivity() {
 
                         // Hỗ trợ hiển thị ảnh từ URL web hoặc chuỗi mã hóa Base64
                         if (!photoUrl.isNullOrEmpty()) {
-                            if (photoUrl.startsWith("http")) {
+                            if (photoUrl.startsWith("http://") || photoUrl.startsWith("https://")) {
                                 Glide.with(this)
                                     .load(photoUrl)
                                     .circleCrop()
                                     .into(ivAvatar)
                             } else {
                                 try {
-                                    val decodedBytes = Base64.decode(photoUrl, Base64.DEFAULT)
+                                    val cleanStr = if (photoUrl.contains(",")) photoUrl.substringAfter(",") else photoUrl
+                                    val decodedBytes = Base64.decode(cleanStr.replace("\\s".toRegex(), ""), Base64.DEFAULT)
                                     val decodedBitmap = BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.size)
-                                    ivAvatar.setImageBitmap(decodedBitmap)
+                                    if (decodedBitmap != null) {
+                                        Glide.with(this)
+                                            .load(decodedBitmap)
+                                            .circleCrop()
+                                            .into(ivAvatar)
+                                    } else {
+                                        ivAvatar.setImageResource(android.R.drawable.ic_menu_camera)
+                                    }
                                 } catch (e: Exception) {
                                     ivAvatar.setImageResource(android.R.drawable.ic_menu_camera)
                                 }
@@ -117,7 +125,6 @@ class UserProfileActivity : AppCompatActivity() {
             val targetWidth = 400
             val targetHeight = (originalBitmap.height * (targetWidth.toDouble() / originalBitmap.width)).toInt()
             val scaledBitmap = Bitmap.createScaledBitmap(originalBitmap, targetWidth, targetHeight, true)
-
             val outputStream = ByteArrayOutputStream()
             scaledBitmap.compress(Bitmap.CompressFormat.JPEG, 70, outputStream)
             val byteArray = outputStream.toByteArray()

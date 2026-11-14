@@ -1,34 +1,98 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/main"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:gravity="center"
-    android:padding="24dp"
+    android:padding="16dp"
+    android:background="#F5F0FF"
     tools:context=".MainActivity">
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Chào mừng bạn đến với CharityApp!"
-        android:textSize="20sp"
-        android:textStyle="bold"
-        android:layout_marginBottom="32dp"/>
+    <!-- 1. Header dùng chung hiển thị Hello + Tên user và Avatar -->
+    <include
+        android:id="@+id/userHeader"
+        layout="@layout/layout_user_header" />
 
-    <Button
-        android:id="@+id/btnProfile"
+    <!-- 2. Nút mở Trang Quản Trị Admin (Mặc định ẩn, chỉ hiện khi user có role admin) -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnAdminDashboard"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Thông tin người dùng"
-        android:layout_marginBottom="12dp"/>
+        android:layout_marginTop="12dp"
+        android:layout_marginBottom="8dp"
+        android:backgroundTint="#7B1FA2"
+        android:text="⚡ Vào Trang Quản Trị Admin"
+        android:textColor="#FFFFFF"
+        app:cornerRadius="12dp"
+        app:elevation="2dp"
+        android:visibility="gone" />
 
-    <Button
-        android:id="@+id/btnLogout"
+    <!-- 3. Nút mở Hộp thư thông báo từ Admin -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnInbox"
+        style="@style/Widget.Material3.Button.OutlinedButton"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Đăng xuất"
-        style="?attr/materialButtonOutlinedStyle"/>
+        android:layout_marginBottom="12dp"
+        android:text="📥 Hộp Thư Thông Báo Từ Admin"
+        android:textColor="#7B1FA2"
+        app:cornerRadius="12dp"
+        app:strokeColor="#D1C4E9"
+        app:strokeWidth="1.5dp" />
+
+    <!-- Tiêu đề danh sách chiến dịch & Nút Thoát bên cạnh -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginBottom="8dp">
+
+        <!-- Tiêu đề -->
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="🔥 Danh Sách Chiến Dịch"
+            android:textColor="#4A148C"
+            android:textSize="17sp"
+            android:textStyle="bold" />
+
+        <!-- Nút Thoát nằm bên cạnh -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnlogout"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="36dp"
+            android:minWidth="0dp"
+            android:minHeight="0dp"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:paddingHorizontal="10dp"
+            android:text="Thoát"
+            android:textColor="#D32F2F"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            app:icon="@android:drawable/ic_menu_close_clear_cancel"
+            app:iconTint="#D32F2F"
+            app:iconSize="16dp"
+            app:rippleColor="#FFEBEE" />
+
+    </LinearLayout>
+
+    <!-- 4. RecyclerView hiển thị danh sách chiến dịch -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/rvCampaigns"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:layout_marginBottom="12dp"
+        android:clipToPadding="false" />
+
+    <!-- 5. Nút Đăng xuất được thiết kế tinh tế, hiện đại -->
+
 
 </LinearLayout>
